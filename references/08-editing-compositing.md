@@ -2,7 +2,7 @@
 
 > 覆盖阶段 9。所有必需 `final_shot` 与 `final_audio` 就绪后执行。
 
-先创建 `EDIT-v1 | Edit Decision List` String/text 节点，记录实际 `SHOT-XX`、`AUD-NAR-XX`、`AUD-SFX-XX`、`BGM-XX` 节点名/ID、入点、出点、轨道、音量、转场和状态。只有在当前 Lumina 画布真实提供时间线、合成或导出能力时才执行成片组装；否则交付经过验证的有序媒体节点与 EDL，并明确标记“未在画布中合成/导出”。
+先创建 `EDIT-v1 | Edit Decision List` String/text 节点，记录实际 `SHOT-XX`、`AUD-NAR-XX`、`AUD-SFX-XX`、`BGM-XX` 节点名/ID、分镜表 `shot_duration_seconds`、实测时长、入点、出点、轨道、音量、转场和状态。只有在当前 Lumina 画布真实提供时间线、合成或导出能力时才执行成片组装；否则交付经过验证的有序媒体节点与 EDL，并明确标记“未在画布中合成/导出”。
 
 ## 轨道布局
 
@@ -62,6 +62,7 @@
 ## Lumina 完成判定
 
 - `SHOT-01` 至 `SHOT-N` 均可播放，顺序与已批准 `STORY-vN` 一致。
+- 每镜实测时长与其 `shot_duration_seconds` 一致；每场与全片时长求和能与规格对账。
 - 所有声音节点可试听并位于正确轨道；旁白、音效和 BGM 的实际电平设置符合上表。
 - 转场、标题卡与音乐切换在真实时间线上可见，或已完整记录在 EDL 中。
 - 导出存在时，记录导出节点/文件、分辨率、画幅、时长和可播放验证结果；排队、准备导出或仅创建 EDL 均不等于成片已导出。

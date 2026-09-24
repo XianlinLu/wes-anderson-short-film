@@ -70,7 +70,7 @@
 - 色彩插槽（见 `references/06-gbh-palette.md`）
 - 声音标注
 - **Lumina 节点绑定**：列出该镜使用的 `CHAR-XX`、`SCENE-XX`、`PROP-XX`、`FRAME-XX-S0`、可选 `FRAME-XX-KN`、`SHOT-XX`、可选 `AUD-NAR-XX` / `AUD-SFX-XX` / `BGM-XX`。使用真实节点 ID 或精确节点名；不存在的节点标记为 `planned`，创建后回填并复核。
-- **时长与稳定画面**：每个叙事 `shot` 固定 30s。以「静止建立 → 单一轴线动作或一次硬切 → 静止读取」组织为 2–4 段；起始帧须是正交二维静帧，运动结束后至少保留 2 秒稳定画面。道具特写、对话和标题信息须写入该 30s 镜内的具体时间段。章节标题卡为独立 3–4s 静态图像，不视为 `shot`。
+- **时长与稳定画面**：每个叙事 `shot` 的时长由已确认分镜表中的 `shot_duration_seconds` 唯一定义。以「静止建立 → 单一轴线动作或一次硬切 → 静止读取」组织为 2–4 段；起始帧须是正交二维静帧，运动结束后尽可能保留至少 2 秒稳定画面。道具特写、对话和标题信息须写入该镜的具体时间段。章节标题卡为独立 3–4s 静态图像，不视为 `shot`，其时长单独计入全片总时长。
 
 > **运镜描述规则**：运镜只写代号和英文关键词，禁止用中文重新描述运镜方式。中文只描述叙事事件。
 > ✗ 错误：M-XL（镜头从左向右横移跟随人物走路）
@@ -78,24 +78,24 @@
 
 **镜内硬切与对象走位**：仅在两个稳定的正交平面之间写 `[CUT →]`；切前切后必须是正面、严格侧面、背面、严格俯视或严格仰视的二维静帧。对话正反打、车辆正面 → 驾驶者 / 车头第一视角、人物 → 道具正面特写直接硬切，禁止用摇镜、甩镜、旋转或绕行补桥。M-00 段内，人物、车辆和道具只能沿 X 轴、Y 轴或中央 Z 轴直线移动；横向入画后再沿中轴走入正中门洞时，必须分为两个明确的连续段，不得斜行、弧行或蛇形运动。
 
-### 运镜序列时间轴写法（每镜 30s）
+### 运镜序列时间轴写法（每镜时长由分镜表给出）
 
 ```
-镜 k 运镜：
+镜 k 运镜（`D = shot_duration_seconds`）：
 [0–Xs]:   运镜代号 · 英文关键词 · 叙事事件（中文）
 [Xs–Ys]:  运镜代号 · 英文关键词 · 叙事事件
-[Ys–结束]: 运镜代号 · 英文关键词 · 叙事事件
+[Ys–Ds]:  运镜代号 · 英文关键词 · 叙事事件
 ```
 
-> **时间轴写法要求**：每个 30 秒镜头用具体秒数完整覆盖 `[0–30s]`，禁止用模糊变量。每段先写 M-00 或单一轴向镜头运动；若镜头为 M-00 而对象在动，明确写「镜头锁定，对象沿 X/Y/中央 Z 轴直线运动」。
+> **时间轴写法要求**：实际输出时把 `D` 替换为分镜表中的具体秒数，从本镜本地 `0s` 开始完整覆盖 `[0–Ds]`，禁止把全片累计时间写进镜头 Prompt。各段连续、无重叠、无空洞。每段先写 M-00 或单一轴向镜头运动；若镜头为 M-00 而对象在动，明确写「镜头锁定，对象沿 X/Y/中央 Z 轴直线运动」。
 
-**示例（正面建立 → 横移 → 中轴离场，30s）：**
+**示例（分镜表指定 18s；正面建立 → 横移 → 中轴离场）：**
 
 ```
-[0–6s]:   M-00 · static locked shot, camera strictly perpendicular to scene plane · 角色A正面站定，翻阅信件。
-[6–14s]:  M-XL · lateral dolly strictly parallel to scene plane, camera moves only on the X-axis · 摄影机横向跟随角色A穿过柜台。
-[14–22s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 镜头锁定；角色A背对镜头，沿中央Z轴走入正中的门洞。
-[22–30s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 门洞与空场景正面静止，叙事收束并作为下一镜切点。
+[0–4s]:   M-00 · static locked shot, camera strictly perpendicular to scene plane · 角色A正面站定，翻阅信件。
+[4–10s]:  M-XL · lateral dolly strictly parallel to scene plane, camera moves only on the X-axis · 摄影机横向跟随角色A穿过柜台。
+[10–15s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 镜头锁定；角色A背对镜头，沿中央Z轴走入正中的门洞。
+[15–18s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 门洞与空场景正面静止，叙事收束并作为下一镜切点。
 ```
 
 十字轴线镜头与对象运动系统的完整代号表、禁止列表与分配约束见 `references/04-camera-and-movement.md`。

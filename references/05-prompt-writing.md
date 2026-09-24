@@ -157,12 +157,12 @@ GBH 色板（十色体系、色彩插槽、色彩弧线）见 `references/06-gbh
 [GBH色彩总括行 或 自定义色彩规格]
 [布景三层：材质层+内容层+年代层]
 [角色描述：服装+站位+道具+角色朝向锁定语]
-[30秒时间轴：0秒起始静帧 → 单一X/Y/中央Z轴运动或一次[CUT →] → 至少2秒收束静帧；仅使用M-00/M-Z+/M-Z-/M-XL/M-YU/M-YD或M-00内对象P-X/P-Y/P-Z]
+[分镜表时长 D 秒的本地时间轴：0秒起始静帧 → 单一X/Y/中央Z轴运动或一次[CUT →] → 尽可能至少2秒收束静帧；仅使用M-00/M-Z+/M-Z-/M-XL/M-YU/M-YD或M-00内对象P-X/P-Y/P-Z]
 [NEGATIVE PROMPT（见下）]
 [质量后缀（见下）]
 ```
 
-**30 秒提示词执行规则**：`start_frame` 是镜头 0 秒的构图锚点；每段以准确秒数覆盖完整 30 秒。单段只允许摄影机或对象之一作为主导运动者：摄影机运动时对象保持可读的稳定关系；M-00 时才可写对象单轴运动。镜内硬切写作 `[CUT →]`，两端必须都是稳定正交画面；不用旋转、摇镜或倾斜制造转换。
+**分镜表时长提示词执行规则**：`D = shot_duration_seconds`，`start_frame` 是镜头本地 0 秒的构图锚点；每段以准确秒数连续、无重叠地覆盖完整 `[0–Ds]`。禁止使用全片累计时间。视频节点请求时长必须等于 D；精确时长不受模型支持时先修改并重新确认分镜表。单段只允许摄影机或对象之一作为主导运动者：摄影机运动时对象保持可读的稳定关系；M-00 时才可写对象单轴运动。镜内硬切写作 `[CUT →]`，两端必须都是稳定正交画面；不用旋转、摇镜或倾斜制造转换。
 
 **Lumina 提交前检查**：节点名与 `shot` ID 一致；Prompt 在视频节点内部；每个引用都有真实连线和已解析 `@` 标签；模型、画幅、清晰度和时长与 `SPEC-vN` 一致；引用总数只覆盖本镜需要的资产；含引用标签的完整 Prompt 不超过当前节点限制（未显示更小限制时以 4,500 字符为上限）。
 
@@ -219,13 +219,13 @@ fine physical detail, crisp natural texture
 | P-Y | `locked camera; subject moves only vertically along the Y-axis, no diagonal path` |
 | P-Z | `locked camera; subject moves straight along the central depth axis, no diagonal path` |
 
-**30 秒完整 Prompt 写法（正面建立 → 横移 → 中轴离场）：**
+**完整 Prompt 写法示例（分镜表指定 18 秒；正面建立 → 横移 → 中轴离场）：**
 
 ```
-[0–6s] static locked frontal planimetric shot; character A faces camera directly, holding a letter.
-[6–14s] lateral dolly strictly parallel to scene plane, camera moves only on the X-axis, no rotation, no push into depth; it follows character A moving horizontally across the counter.
-[14–22s] static locked shot; camera does not move; character A turns fully to a back-facing 180-degree orientation, then walks straight along the central depth axis into the centered doorway.
-[22–30s] static locked frontal planimetric shot of the centered doorway and empty room, hold still for reading.
+[0–4s] static locked frontal planimetric shot; character A faces camera directly, holding a letter.
+[4–10s] lateral dolly strictly parallel to scene plane, camera moves only on the X-axis, no rotation, no push into depth; it follows character A moving horizontally across the counter.
+[10–15s] static locked shot; camera does not move; character A turns fully to a back-facing 180-degree orientation, then walks straight along the central depth axis into the centered doorway.
+[15–18s] static locked frontal planimetric shot of the centered doorway and empty room, hold still for reading.
 ```
 
 ---

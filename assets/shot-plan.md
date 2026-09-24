@@ -1,4 +1,4 @@
-# Shot 计划模板（单镜 30 秒）
+# Shot 计划模板（分镜表驱动时长）
 
 > 阶段 5 为每个 `shot` 填写一份；作为关键帧与视频提示词生成的唯一依据。
 
@@ -6,7 +6,9 @@
 ## Shot k
 场景类型：[A–G / T-10]
 章节：[章节名]
-目标时长：30s（除非用户明确要求短镜头）
+shot_duration_seconds：[已确认分镜表中的具体秒数 D]
+场景内镜头顺序：[序号]
+依赖版本：[screenplay / storyboard / character asset / voice]
 
 ### 布景描述
 材质层：[材质词]
@@ -26,10 +28,10 @@
 结构层：[对称]
 内容层：[不镜像，视觉重量平衡说明]
 
-### 运镜时间轴（完整覆盖 0–30s）
+### 运镜时间轴（完整覆盖本地 0–Ds）
 [0–Xs]:   代号 · 英文关键词 · 叙事事件（中文）
 [Xs–Ys]:  代号 · 英文关键词 · 叙事事件
-[Ys–30s]: 代号 · 英文关键词 · 叙事事件
+[Ys–Ds]:  代号 · 英文关键词 · 叙事事件
 
 ### start_frame（0 秒静帧）
 构图 / 人物朝向 / 场景中轴 / 道具起始位置
@@ -62,9 +64,11 @@ BGM 节点：[BGM-XX 真实节点名/ID，或 off]
 ## 示例（正面建立 → 横移 → 中轴离场）
 
 ```
+shot_duration_seconds：18
+
 ### 运镜时间轴
-[0–6s]:   M-00 · static locked shot, camera strictly perpendicular to scene plane · 角色A正面站定，翻阅信件。
-[6–14s]:  M-XL · lateral dolly strictly parallel to scene plane, camera moves only on the X-axis · 摄影机横向跟随角色A穿过柜台。
-[14–22s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 镜头锁定；角色A背对镜头，沿中央Z轴走入正中的门洞。
-[22–30s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 门洞与空场景正面静止，叙事收束并作为下一镜切点。
+[0–4s]:   M-00 · static locked shot, camera strictly perpendicular to scene plane · 角色A正面站定，翻阅信件。
+[4–10s]:  M-XL · lateral dolly strictly parallel to scene plane, camera moves only on the X-axis · 摄影机横向跟随角色A穿过柜台。
+[10–15s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 镜头锁定；角色A背对镜头，沿中央Z轴走入正中的门洞。
+[15–18s]: M-00 · static locked shot, camera strictly perpendicular to scene plane · 门洞与空场景正面静止，叙事收束并作为下一镜切点。
 ```
