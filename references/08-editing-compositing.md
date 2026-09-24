@@ -2,7 +2,7 @@
 
 > 只对已经通过真实 Video Extension 链达到目标时长的 `VIDEO-FINAL` 执行。本文件不允许把多个独立视频片段组合成成片。
 
-先创建 `EDIT-v1 | Edit Decision List` String/text 节点，记录 `VIDEO-SEED`、所有 `VIDEO-EXT-XX`、最终 `VIDEO-FINAL` 的真实节点名/ID、上一版完整视频输入、`added_duration_seconds`、预计与实测累计时长、验证状态，以及 `AUD-NAR-XX`、`AUD-SFX-XX`、`BGM-XX` 的实际节点与连接。
+先创建 `EDIT-v1 | Edit Decision List` String/text 节点，记录用户已批准的分镜总汇表版本，以及 `storyboard_shot_id → video_step_id` 的逐行映射。对 `VIDEO-SEED`、所有 `VIDEO-EXT-XX` 和最终 `VIDEO-FINAL`，记录真实节点名/ID、对应行 `shot_duration_seconds`、上一版完整视频输入、请求/新增时长、预计与实测累计时长、验证状态，以及 `AUD-NAR-XX`、`AUD-SFX-XX`、`BGM-XX` 的实际节点与连接。
 
 ## 视频处理边界
 
@@ -49,7 +49,9 @@ BGM：BGM-XX
 ## Lumina 完成判定
 
 - `VIDEO-SEED` 的可播放结果曾单独展示并获得用户明确批准。
+- `VIDEO-SEED` 对应已批准分镜总汇表第一行，请求时长、Prompt 结束时间和实测时长均等于第一行 `shot_duration_seconds`；第二个视频只在该确认后生成。
 - 每个 `VIDEO-EXT-XX` 都真实连接上一版完整视频，输出可播放、更长且保留全部既有内容。
+- 第 `k >= 2` 个分镜逐行对应 `VIDEO-EXT-(k-1)`，新增时长等于该行 `shot_duration_seconds`。
 - 每个视频 Prompt 的本地时间轴都从 `00:00` 开始，只覆盖本次新增时长，不含全片累计时码。
 - `VIDEO-FINAL` 的实测时长准确等于用户提示词中的 `target_duration_seconds`。
 - 若启用声音，声音节点可试听、连接真实、时长与电平已验证；混音后的视频时长没有变化。

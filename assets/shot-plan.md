@@ -1,12 +1,35 @@
-# Video Step 计划模板（短种子确认后连续延长）
+# 分镜总汇与 Video Step 计划模板
 
-> 为每个视频生成动作填写一份。`VIDEO-SEED` 与每个 `VIDEO-EXT-XX` 都是独立节点、独立 Prompt 和独立本地时间轴；延长节点仍必须以上一版完整视频为输入。
+> 用户先确认分镜总汇表，再为每个分镜行派生一份视频执行计划。`VIDEO-SEED` 与每个 `VIDEO-EXT-XX` 都是独立节点、独立 Prompt 和独立本地时间轴；不得改变对应分镜行的时长，延长节点仍必须以上一版完整视频为输入。
+
+## 一、分镜总汇表（必须先由用户确认）
+
+```text
+STORY 版本：[STORY-vN]
+target_duration_seconds：[用户直接提示词中的目标]
+approval_status：[draft / approved]
+
+storyboard_shot_id | shot_duration_seconds | framing | camera_code_and_keywords | characters_and_versions | action | dialogue_or_audio | environment_and_props | transition_or_end_state
+SHOT-01 | [D1] | ...
+SHOT-02 | [D2] | ...
+...
+
+duration_check：D1 + D2 + ... = target_duration_seconds
+用户确认记录：[未确认时禁止生成任何视频]
+```
+
+映射固定为：`SHOT-01 → VIDEO-SEED`；`SHOT-02 → VIDEO-EXT-01`；第 `k >= 2` 行 → `VIDEO-EXT-(k-1)`。修改任意分镜行的时长、顺序、内容或依赖后，先递增 `STORY-vN` 并重新获得用户确认，再更新下方执行计划。
+
+## 二、逐行派生的 Video Step
 
 ```text
 ## Video Step [SEED / EXT-XX]
+master_storyboard_version：[STORY-vN approved]
+storyboard_shot_id：[SHOT-01 / SHOT-02 / ...]
+shot_duration_seconds：[用户已批准分镜总汇表中的原值 D]
 video_step_id：[VIDEO-SEED / VIDEO-EXT-XX]
 mode：[seed / extension]
-added_duration_seconds：[本次种子或新增时长 D]
+requested_or_added_duration_seconds：[必须等于 shot_duration_seconds]
 expected_cumulative_duration_seconds：[仅用于台账，不得写进 Prompt]
 previous_complete_video：[seed 填 none；extension 填上一节点真实名称/ID]
 章节 / 叙事节拍：[名称]
@@ -69,9 +92,12 @@ BGM 节点：[BGM-XX 真实节点名/ID，或 off]
 ## 示例：第二次延长新增 8 秒
 
 ```text
+master_storyboard_version：STORY-v1 approved
+storyboard_shot_id：SHOT-03
+shot_duration_seconds：8
 video_step_id：VIDEO-EXT-02
 mode：extension
-added_duration_seconds：8
+requested_or_added_duration_seconds：8
 expected_cumulative_duration_seconds：24
 previous_complete_video：VIDEO-EXT-01
 

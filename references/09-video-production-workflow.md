@@ -26,7 +26,7 @@
 - 最大累计时长；
 - 实际时长元数据精度。
 
-选择最短且足以判断角色、构图、色彩和运动语法的首段时长，并计算有序扩展计划。若精确目标不可达，先展示可支持的最近结果并等待用户选择；禁止静默取整。
+不得自行选择首段时长。先完成并获得用户对分镜总汇表的确认；第一行 `shot_duration_seconds` 就是首段请求时长。若模型不支持该时长，必须回到分镜总汇表，展示支持值并让用户修改、重新确认；禁止擅自缩短第一分镜或静默取整。
 
 ## 三、生产台账
 
@@ -38,13 +38,16 @@ storyboard_version: 1
 interaction_language: zh-CN
 story_language: zh-CN
 target_duration_seconds: number
+master_storyboard_approval: confirmed
 seed:
+  storyboard_shot_id: SHOT-01
   node: VIDEO-SEED
   requested_duration_seconds: number
   actual_duration_seconds: null
   status: planned | generated | confirmed | revise | failed
 extensions:
   - step_id: VIDEO-EXT-01
+    storyboard_shot_id: SHOT-02
     input_complete_video: null
     added_duration_seconds: number
     expected_cumulative_duration_seconds: number
@@ -57,24 +60,27 @@ final_video:
 
 同时记录角色、场景、道具、声音和关键帧版本。任何 `pending`、`revise`、`stale` 或 `failed` 依赖不得进入视频生成。
 
-## 四、生成步骤分镜表
+## 四、用户确认的分镜总汇表与视频映射
 
-把完整故事映射为一个首段行和若干扩展行：
+先展示并获得用户对完整分镜总汇表的确认：
 
 ```text
-video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulative_duration_seconds | framing | camera_code_and_keywords | characters_and_versions | new_action | dialogue_or_audio | environment_and_props | continuation_end_state
+storyboard_shot_id | shot_duration_seconds | framing | camera_code_and_keywords | characters_and_versions | action | dialogue_or_audio | environment_and_props | transition_or_end_state
 ```
 
 规则：
 
-- 首段行的 `added_duration_seconds` 是首段请求时长。
-- 每个扩展行的 `added_duration_seconds` 只是本次调用新增的时长，不是累计总时长。
+- 分镜总汇表必须在任何视频节点生成前由用户明确确认。
+- 第 1 行固定映射到 `VIDEO-SEED`，其 `requested_duration_seconds` 必须等于第一行 `shot_duration_seconds`。
+- 第 `k >= 2` 行固定映射到 `VIDEO-EXT-(k-1)`，其 `added_duration_seconds` 必须等于该行 `shot_duration_seconds`。
+- “短首段”只表示第一分镜先供评审；不得把第一行时长替换成更短的预览时长。
+- 不得跳过、合并、拆分或重新排序已批准分镜行；需要调整时先更新整个分镜总汇表并重新获得用户确认。
 - `expected_cumulative_duration_seconds` 只用于台账和进度核验，禁止写进视频 Prompt。
-- 所有新增时长之和必须精确等于 `target_duration_seconds`。
+- 所有 `shot_duration_seconds` 之和必须精确等于 `target_duration_seconds`。
 - 每行只描述一个生成调用能够执行的新故事段落，并以可继续延长的稳定画面结束。
 - 韦斯·安德森构图、角色三态朝向、十字轴线运镜、GBH 色彩与年代锚定继续适用。
 
-确认该表后才生成视频。
+确认该表后，再派生只用于执行和核验的视频步骤台账；派生过程不得改变任何行时长。
 
 ## 五、每个视频 Prompt 独立计时
 
@@ -83,7 +89,7 @@ video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulat
 每个 Prompt 必须：
 
 1. 从本次调用的 `00:00` 开始；
-2. 最后一个时间戳等于本行的 `added_duration_seconds`；
+2. 最后一个时间戳等于对应分镜行的 `shot_duration_seconds`；
 3. 只描述本次调用要生成或新增的内容；
 4. 使用连续、无重叠、无空洞的局部时间段；
 5. 不出现任何全片累计时间或上一段时间范围。
@@ -101,14 +107,14 @@ video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulat
 ## 六、短首段试制与强制确认
 
 1. 创建 `FRAME-SEED-S0`，验证角色身份、服装、道具、正交构图、色彩和年代。
-2. 创建且只创建一个 `VIDEO-SEED` Video Generation 节点。
+2. 创建且只创建一个 `VIDEO-SEED` Video Generation 节点，把它绑定到已批准分镜总汇表第一行。
 3. 把完整独立 Prompt 写入节点内部；图片使用真实连接与已解析 `@` 标签。
-4. 生成短首段并验证它可以播放、实际时长正确、比例正确、人物一致、运动符合轴线规则、结尾适合继续。
-5. 向用户展示真实首段，提供本地化的确认或修改选项，然后结束当前执行。
+4. 使用第一行完整的 `shot_duration_seconds` 生成首段；验证它可以播放、请求和实际时长正确、比例正确、人物一致、运动符合轴线规则、结尾适合继续。
+5. 向用户展示真实的第一分镜视频，提供本地化的“确认并生成第二个视频 / 修改第一分镜视频”选项，然后结束当前执行。
 
 在 `seed.status` 变为 `confirmed` 前：
 
-- 不创建任何 `VIDEO-EXT-XX`；
+- 不创建第二个视频或任何 `VIDEO-EXT-XX`；
 - 不调用扩展动作；
 - 不生成最终 BGM 或宣称视频生产已开始批量运行；
 - 不把沉默、查看或下载视为确认。
@@ -117,10 +123,10 @@ video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulat
 
 ## 七、串行真实扩展
 
-首段明确确认后，按表逐个处理扩展行。每个 `VIDEO-EXT-XX`：
+第一分镜视频明确确认后，才按分镜总汇表从第 2 行开始逐个处理。第 2 行生成第二个视频 `VIDEO-EXT-01`；此后第 `k` 行生成 `VIDEO-EXT-(k-1)`。每个 `VIDEO-EXT-XX`：
 
 1. 输入上一步返回的最新完整视频；第一扩展输入已确认的 `VIDEO-SEED`。
-2. 使用一个新的独立 Prompt，从 `00:00` 开始，结束于本次 `added_duration_seconds`。
+2. 使用一个新的独立 Prompt，从 `00:00` 开始，结束于对应分镜行的 `shot_duration_seconds`；`added_duration_seconds` 与该值相等。
 3. 只描述要新增的动作、剧情、声音和收束状态。
 4. 保持角色身份、服装、场景几何、光线、色彩、道具状态、动作方向和声音策略。
 5. 等待返回完整视频，不并行启动依赖扩展。

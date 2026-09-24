@@ -16,9 +16,10 @@ story_language：[明确指定 / 现有剧本语言 / interaction_language]
 声音生成节点/模型：[当前 Lumina 实际可用选择]
 短片语言：[中 / 英 / 其他]；旁白、对白与标题卡均遵循此语言
 旁白：[是 / 否]
-种子新增时长：[added_duration_seconds]
-延长步数：[按模型实际支持的增量规划]
-时长来源：种子与每次延长的 added_duration_seconds 之和必须等于 target_duration_seconds
+分镜总汇表版本：[STORY-vN / approved]
+第一分镜时长：[总汇表第一行 shot_duration_seconds；即 VIDEO-SEED 请求时长]
+后续视频步数：[总汇表第 2 行至末行]
+时长来源：VIDEO-SEED 严格等于总汇表第一行；第 k>=2 行的 shot_duration_seconds 严格等于 VIDEO-EXT-(k-1) 的 added_duration_seconds；所有行之和等于 target_duration_seconds
 时长校验：每步预计累计时长 / 每步实测累计时长 / 最终目标时长
 叙事梗概（逐镜）：
   镜1：[一句话]
@@ -27,9 +28,9 @@ story_language：[明确指定 / 现有剧本语言 / interaction_language]
 连贯锁（全片不变）：角色身份 / 服装主色与标志道具 / 色温
 Lumina 节点前缀：SPEC / STORY / CHAR / SCENE / PROP / FRAME-SEED / FRAME-EXT / VIDEO-SEED / VIDEO-EXT / VIDEO-FINAL / VOICE-REF / AUD-NAR / AUD-SFX / BGM / EDIT
 引用合约：图片到视频节点必须同时具备真实连接与 @ 选择器生成的已解析标签
-生产路径：短种子视频确认 → 基于上一版完整视频顺序延长 → 达到目标时长
+生产路径：确认分镜总汇表 → 按第一行完整时长生成 VIDEO-SEED → 用户确认第一分镜视频 → 按第 2 行生成第二个视频 → 继续顺序延长 → 达到目标时长
 提示词时钟：每个 VIDEO-SEED / VIDEO-EXT 节点都是独立 Prompt，时间轴从本地 00:00 开始；累计时码禁止进入 Prompt
-生成顺序：规格确认 → 剧本锁定 → 角色资产确认 → 可选声音确认 → 生成步骤表确认 → VIDEO-SEED 生成 → 用户明确确认 → VIDEO-EXT-01…N 顺序延长 → VIDEO-FINAL 核验/交付
+生成顺序：规格确认 → 剧本锁定 → 角色资产确认 → 可选声音确认 → 分镜总汇表确认 → 按第 1 行生成 VIDEO-SEED → 用户明确确认 → 按第 2 行生成 VIDEO-EXT-01 → 其余行顺序延长 → VIDEO-FINAL 核验/交付
 真实 Video Extension 能力：[可用 / 不可用 / 待确认]
 不可用时的交付：已确认 VIDEO-SEED + 独立声音/资产节点 + EDIT-vN 限制说明；不得使用片段拼接冒充延长
 版本：[v1]
