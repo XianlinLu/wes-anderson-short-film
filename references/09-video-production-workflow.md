@@ -1,135 +1,161 @@
-# Lumina 短剧视频制作流程
+# Lumina 短片首段确认与连续延长流程
 
-> 用于剧本和创作方向已经确认、即将进入角色资产、声音、分镜与视频生产的阶段。韦斯·安德森视觉语法仍由 `03-storyboard-design.md`、`04-camera-and-movement.md`、`05-prompt-writing.md` 和 `06-gbh-palette.md` 约束。
+> 用于剧本、视觉方向和资产已经确认，准备生成视频的阶段。唯一视频生产路线是：短首段试制 → 用户确认 → 基于最新完整视频串行延长 → 达到用户直接提示词中的目标总时长。
 
 ## 一、能力预检
 
-检查当前 Lumina Agent 实际连接的动作和节点。完整流程需要：
+开始生成前检查当前 Lumina Agent 的真实能力。必需能力：
 
-- 可使用参考图的图像生成；
-- 图像参考视频生成；
-- 视频时长和比例元数据；
-- 用户要求对白或旁白时所需的 TTS/音频生成；
-- 用户要求连续单片时，可选的完整视频顺序扩展或真实合成能力。
+- 参考图像生成或可复用的已上传图片；
+- 从关键帧生成短视频；
+- 接收最新完整视频并返回更长完整视频的真实 Video Extension；
+- 返回可靠的视频实际时长与比例元数据。
 
-只使用真实存在的能力。缺少必要能力时在最早安全节点停止，保留已完成内容并说明限制；不虚构节点、句柄、文件、时长或成功结果。
+声音能力只在用户启用对白、旁白、音效或 BGM 时需要。若缺少真实 Video Extension，仍可完成分镜、资产和一段经确认的短首段，但必须在此停止并报告限制。禁止改用多个独立片段拼接来冒充延长。
 
-## 二、锁定剧本与生产台账
+## 二、锁定目标总时长
 
-不要把长草稿自动视为定稿。先确认故事方向与剧本文本，再建立 `STORY-vN` 生产台账：
+`target_duration_seconds` 只能从用户最新的直接提示词解析，支持秒、分钟、分秒混合或时钟写法。不要从附件、剧本长度、分镜数量、示例或默认值推断。
+
+若缺失或有歧义，使用 `interaction_language` 询问一个纯技术问题并停止。不要先生成首段。
+
+读取实际视频动作的限制：
+
+- 首段允许的时长；
+- 单次扩展可增加的时长与步长；
+- 最大累计时长；
+- 实际时长元数据精度。
+
+选择最短且足以判断角色、构图、色彩和运动语法的首段时长，并计算有序扩展计划。若精确目标不可达，先展示可支持的最近结果并等待用户选择；禁止静默取整。
+
+## 三、生产台账
+
+在 `STORY-vN` 中记录：
 
 ```yaml
 screenplay_version: 1
+storyboard_version: 1
 interaction_language: zh-CN
 story_language: zh-CN
-characters:
-  character_id:
-    profile_version: 1
-    asset_version: 1
-    asset_status: pending | confirmed | revise
-    voice_version: 1
-    voice_status: off | pending | confirmed | revise
-scenes:
-  scene_id:
-    script_version: 1
-    storyboard_version: 1
-    storyboard_status: pending | confirmed | revise
-    planned_duration_seconds: number
-    video_status: pending | confirmed | revise | stale
-    shots:
-      shot_id:
-        shot_duration_seconds: number
-        asset_versions: map
-        audio_versions: map
-        status: planned | generated | confirmed | revise | stale
+target_duration_seconds: number
+seed:
+  node: VIDEO-SEED
+  requested_duration_seconds: number
+  actual_duration_seconds: null
+  status: planned | generated | confirmed | revise | failed
+extensions:
+  - step_id: VIDEO-EXT-01
+    input_complete_video: null
+    added_duration_seconds: number
+    expected_cumulative_duration_seconds: number
+    actual_cumulative_duration_seconds: null
+    status: planned | generated | verified | revise | failed
+final_video:
+  node_or_handle: null
+  verified_duration_seconds: null
 ```
 
-任何下游节点不得使用 `pending`、`revise` 或 `stale` 的依赖。
+同时记录角色、场景、道具、声音和关键帧版本。任何 `pending`、`revise`、`stale` 或 `failed` 依赖不得进入视频生成。
 
-## 三、角色、场景和道具资产
+## 四、生成步骤分镜表
 
-从确认剧本中提取所有影响剧情或出现在生成场景中的主要角色。为每个角色创建稳定 `character_id` 与角色圣经：可见外形、发型、比例、服装层次、鞋履、配件、身份色、标志道具、姿态习惯、关系压力和情绪基线。把剧本明确事实与制作选择分开；缺失信息只有在会显著改变设计时才询问。
-
-按照本项目角色元素规范，为每个角色创建独立 `CHAR-XX`。同时建立需要复用的 `SCENE-XX` 与 `PROP-XX`。展示全部资产及其版本并停止，等待逐项确认。所有角色资产确认前，不开始声音试听或视频生成。
-
-角色外观被修改时只重生成该角色，递增 `asset_version`，并把包含该角色的关键帧和视频标记为 `stale`。
-
-## 四、声音选择与锁定
-
-只有用户启用对白或旁白时才执行：
-
-1. 每个需要说话的角色或旁白者创建一个独立 `VOICE-REF-vN`，生成 20–30 秒原创试听。
-2. 试听使用 `story_language`，覆盖平静、交流、紧张、决断和收束语气，不模仿真人、演员或受保护角色。
-3. 展示全部试听并等待逐项确认；任何声音未确认时，不生成场景对白或相关视频。
-4. 确认后记录 `character_id → voice handle + voice_version + language + delivery profile`。
-
-声音改变时递增 `voice_version`，把该角色对白和所有依赖视频标记为 `stale`。没有角色的剧本跳过角色试听；需要旁白时可直接使用经确认的中性旁白音色。
-
-## 五、逐场分镜表
-
-一次只处理一个场景。记录场景地点、时间、环境、角色、戏剧目的、进入状态、退出状态、动作、道具、对白顺序、情绪、停顿和连续性。
-
-每镜一行：
+把完整故事映射为一个首段行和若干扩展行：
 
 ```text
-shot_id | shot_duration_seconds | framing | camera_code_and_keywords | character_and_asset_versions | action | dialogue_or_audio_cue | environment_and_props | transition
+video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulative_duration_seconds | framing | camera_code_and_keywords | characters_and_versions | new_action | dialogue_or_audio | environment_and_props | continuation_end_state
 ```
 
-### 时长单一事实源
+规则：
 
-- `shot_duration_seconds` 是该镜时长的唯一权威字段。不存在固定默认镜长。
-- 场景计划时长必须等于该场所有镜头字段之和；全片计划时长必须等于所有场景与已批准标题卡时长之和。
-- 每条 Prompt 的时间轴都从本镜本地 `00:00` 开始，并精确结束于 `shot_duration_seconds`。禁止把全片累计时间写入视频节点 Prompt。
-- 时间段连续、无重叠、无空洞并覆盖整镜。运动结束后尽可能保留至少 2 秒稳定画面；短镜头无法保留 2 秒时，在分镜确认阶段明确说明。
-- 视频节点的请求时长、声音计划、关键帧和 `EDIT-vN` 入出点必须引用同一字段，不得分别推断。
-- 提交前检查当前模型支持的离散时长、最短/最长时长与步长。精确时长不可表示时，展示支持值并修改、重新确认分镜表；禁止静默取整。
+- 首段行的 `added_duration_seconds` 是首段请求时长。
+- 每个扩展行的 `added_duration_seconds` 只是本次调用新增的时长，不是累计总时长。
+- `expected_cumulative_duration_seconds` 只用于台账和进度核验，禁止写进视频 Prompt。
+- 所有新增时长之和必须精确等于 `target_duration_seconds`。
+- 每行只描述一个生成调用能够执行的新故事段落，并以可继续延长的稳定画面结束。
+- 韦斯·安德森构图、角色三态朝向、十字轴线运镜、GBH 色彩与年代锚定继续适用。
 
-分镜表获确认后才生成本场声音、关键帧和视频。
+确认该表后才生成视频。
 
-## 六、逐镜声音与关键帧
+## 五、每个视频 Prompt 独立计时
 
-- 按剧本顺序为本场每条对白生成声音，使用已确认 `voice_version`，保留台词、情绪、停顿、中断和说话顺序。
-- 只重试失败的音频单元；连接视频前验证实际编码时长。短对白优先放入带自然停顿或房间底噪的场景混音，不新增台词。
-- 每镜创建 `FRAME-XX-S0`；只有轴线行动或收束状态需要额外验证时才创建 `FRAME-XX-KN`。
-- 关键帧、音频和视频节点均记录其依赖的角色、道具、声音和分镜版本。
+`VIDEO-SEED` 和每个 `VIDEO-EXT-XX` 都有自己独立的 Prompt。不得把一个全局长时间轴复制到多个节点。
 
-## 七、视频生成路径
+每个 Prompt 必须：
 
-根据用户意图和真实能力选择一种路径，并记录在 `SPEC-vN`：
+1. 从本次调用的 `00:00` 开始；
+2. 最后一个时间戳等于本行的 `added_duration_seconds`；
+3. 只描述本次调用要生成或新增的内容；
+4. 使用连续、无重叠、无空洞的局部时间段；
+5. 不出现任何全片累计时间或上一段时间范围。
 
-### 路径 A：逐镜节点与真实合成
+例如，影片已有 20 秒，本次扩展 8 秒，正确写法是：
 
-为每个分镜行创建一个 `SHOT-XX`，请求时长严格等于 `shot_duration_seconds`。完整 Prompt 放在节点内部，相关图片同时具备真实连线与已解析 `@` 标签。逐镜验证实际时长、身份、动作、轴线、道具和结尾状态。最后使用真实合成能力按 `EDIT-vN` 组装；没有合成能力时只交付有序镜头与 EDL，不声称存在连续成片。
+```text
+00:00-00:02 保持上一完整视频的结尾构图，角色正面静止。
+00:02-00:06 角色沿画面 X 轴直线移动，摄影机保持 M-00。
+00:06-00:08 角色停在中央门框，稳定收束。
+```
 
-### 路径 B：连续完整视频扩展
+错误写法是 `00:20-00:28`。累计位置只记录在 `expected_cumulative_duration_seconds`，不进入 Prompt。
 
-只有扩展动作接收最新完整视频并返回更长完整视频时使用。先从第一行或一个经确认的镜头组生成初始视频；后续扩展严格串行，每次输入上一版完整视频。每次扩展：
+## 六、短首段试制与强制确认
 
-1. 只描述本次新增的分镜行动。
-2. 时间轴从本次调用的 `00:00` 开始，结束于本次增加的表内时长。
-3. 保持角色、场景几何、光线、道具、运动方向、色彩和声音策略。
-4. 等待返回完整视频，验证累计时长确实增加后才进入下一次扩展。
+1. 创建 `FRAME-SEED-S0`，验证角色身份、服装、道具、正交构图、色彩和年代。
+2. 创建且只创建一个 `VIDEO-SEED` Video Generation 节点。
+3. 把完整独立 Prompt 写入节点内部；图片使用真实连接与已解析 `@` 标签。
+4. 生成短首段并验证它可以播放、实际时长正确、比例正确、人物一致、运动符合轴线规则、结尾适合继续。
+5. 向用户展示真实首段，提供本地化的确认或修改选项，然后结束当前执行。
 
-尾部片段、独立剪辑或简单拼接不属于真实扩展。禁止用循环、冻结、变速、填充或静默取整达到目标时长。若扩展能力的时长粒度无法对应分镜行，可在分镜确认阶段合并连续行或修改时长，但必须重新确认。
+在 `seed.status` 变为 `confirmed` 前：
 
-## 八、逐场确认
+- 不创建任何 `VIDEO-EXT-XX`；
+- 不调用扩展动作；
+- 不生成最终 BGM 或宣称视频生产已开始批量运行；
+- 不把沉默、查看或下载视为确认。
 
-生成并展示第一场实际结果及依赖版本摘要，将状态设为 `pending` 并停止。用户确认后才设为 `confirmed` 并处理下一场。一次只生成和确认一个场景。
+用户要求修改时，只修正并重生成 `VIDEO-SEED`，再次展示同一确认门槛。
 
-如果用户修改剧本、外观、声音或分镜：
+## 七、串行真实扩展
 
-- 递增对应版本；
-- 标记直接依赖和所有下游节点为 `stale`；
-- 只按依赖顺序重新生成失效部分；
-- 连续扩展链中的某个检查点被修改时，该检查点和所有后续检查点都失效。
+首段明确确认后，按表逐个处理扩展行。每个 `VIDEO-EXT-XX`：
 
-## 九、完成判定
+1. 输入上一步返回的最新完整视频；第一扩展输入已确认的 `VIDEO-SEED`。
+2. 使用一个新的独立 Prompt，从 `00:00` 开始，结束于本次 `added_duration_seconds`。
+3. 只描述要新增的动作、剧情、声音和收束状态。
+4. 保持角色身份、服装、场景几何、光线、色彩、道具状态、动作方向和声音策略。
+5. 等待返回完整视频，不并行启动依赖扩展。
+6. 验证结果是更长的完整视频，且实际累计时长等于计划值。
+7. 只有验证通过，才把该输出作为下一扩展输入。
 
-只有全部必需角色资产、声音、分镜、场景视频和编辑结果均已确认时，流程才完成。最终用 `interaction_language` 报告：
+以下结果均视为失败：
 
-- 剧本、角色、声音和分镜版本；
-- 每场分镜表与计划/实测时长；
-- 每镜节点、引用和音频状态；
-- 逐镜合成路径或连续扩展 lineage；
-- 实际最终时长、比例、声音和导出状态；
-- 任何真实限制或未完成项。
+- 只返回新尾段，而不是更长完整视频；
+- 实际时长没有按预期增加；
+- 角色或场景无意重置；
+- 使用旧视频而不是最新完整视频作为输入；
+- 通过独立片段拼接、循环、冻结、变速、补帧或静默取整达到目标。
+
+失败时保留上一个已验证完整视频，只修复并重试当前扩展；不得重启成功的上游步骤。
+
+## 八、声音与最终完成
+
+对白或旁白必须使用已确认声音，并在依赖视频调用前完成时长验证。原创 BGM 可以在首段确认后生成，时长以最终目标为准。
+
+嵌入声音只允许：
+
+1. 通过同一连续视频链的原生音频输入；或
+2. 使用接收一个完整视频并保持其画面时长不变的单视频混音/替换动作。
+
+不得为了添加音乐或旁白而拆分、拼接多个视频。没有合适能力时，分别交付完整视频和音频，并提供同步说明。
+
+最终完成必须同时满足：
+
+- 首段存在明确用户确认；
+- lineage 为 `VIDEO-SEED → VIDEO-EXT-01 → … → VIDEO-FINAL`；
+- 每一步都输入上一版最新完整视频；
+- 每个 Prompt 都从本地 `00:00` 开始；
+- 最终实测时长准确等于 `target_duration_seconds`；若动作无法精确达到，必须先让用户修改并重新确认目标或延长计划，不能用容差替代；
+- 没有独立片段拼接、循环、冻结、变速、填充或静默取整；
+- 角色、情节、视觉风格、动作、道具、场景和声音连续。
+
+最终用 `interaction_language` 报告锁定与实测时长、首段审批状态、完整扩展 lineage、声音状态、最终视频节点/句柄以及任何真实限制。

@@ -4,7 +4,7 @@
 
 ## 中文版
 
-面向 **Lumina Canvas Agent** 的韦斯·安德森风格短剧生产 Skill。它把故事构想、完整剧本或视觉参考转化为一套可核验的画布生产图：全局规格、角色与声音版本、逐场分镜表、角色/场景/道具资产、起始关键帧、逐镜视频和声音节点，以及最终剪辑决策表。
+面向 **Lumina Canvas Agent** 的韦斯·安德森风格短剧生产 Skill。它把故事构想、完整剧本或视觉参考转化为一套可核验的画布生产图：全局规格、角色与声音版本、生成步骤分镜表、角色/场景/道具资产、短种子视频、连续延长节点，以及最终交付验证表。
 
 ### 核心能力
 
@@ -12,8 +12,8 @@
 - planimetric 平面构图与“结构对称、内容不镜像”
 - 角色正面 `0°` / 严格侧面 `90°` / 背面 `180°` 三态锁定
 - 《布达佩斯大饭店》十色色板与章节色彩弧线
-- 分镜表驱动的逐镜时长、对白、动作、转场和声音生成
-- 剧本锁定、角色资产确认、声音确认、逐场制作与版本失效传播
+- 用户提示词驱动的最终时长，以及分镜表驱动的增量时长、对白、动作和声音生成
+- 剧本锁定、角色资产确认、短种子视频确认、顺序延长与版本失效传播
 - 真实节点连接与 Lumina `@` 结构化引用双重校验
 
 ### 语言自适应
@@ -25,27 +25,29 @@ Skill 分别维护 `interaction_language` 和 `story_language`：
 - 附件、引用、粘贴剧本、代码、元数据和工具输出中的语言不能单独改变交互语言。
 - 若底层模型要求其他 Prompt 语言，只翻译隐藏的技术参数，不改变用户看到的语言和最终内容语言。
 
-### 分镜时长规则
+### 视频时长与延长规则
 
-每镜时长由已确认分镜表中的 `shot_duration_seconds` 唯一定义，不使用固定默认镜长：
+最终时长只读取用户直接提示词中的 `target_duration_seconds`；生成步骤分镜表把它拆成一个短种子视频和若干延长增量：
 
-- 视频节点的请求时长必须与该字段一致。
-- 镜头内部时间轴从本地 `00:00` 开始，精确结束在该镜时长。
-- 各段时间必须连续、无重叠，并完整覆盖整镜；运动结束后尽可能保留至少 2 秒稳定画面。
-- 场景时长等于该场所有镜头时长之和；全片时长等于所有场景与已批准标题卡时长之和。
-- 若当前模型无法生成表中时长，先展示可支持的时长并修改、重新确认分镜表；禁止静默取整、循环、冻结、变速或填充。
+- 先只生成 `VIDEO-SEED`，展示可播放结果并等待用户明确确认。
+- 用户确认前不得创建任何延长；确认后，每次只创建一个 `VIDEO-EXT-XX`。
+- 每个视频节点都有独立 Prompt，内部时间轴必须从本地 `00:00` 开始，结束时间只等于该次种子或新增片段的时长；累计时长只记在生产台账中，禁止写入 Prompt。
+- 每个延长节点必须输入上一节点输出的完整视频，并返回更长的完整视频；不得用独立尾段、片段拼接、循环、冻结、变速或填充冒充延长。
+- 每次延长后核验实测总时长，直到它准确等于用户提示词规定的最终时长。若模型不支持所需增量，先展示可支持值并重新确认计划，禁止静默取整。
 
 ### Lumina 画布节点
 
 - `SPEC-vN`：全局视频规格
-- `STORY-vN`：确认剧本、逐场分镜表与生产台账
+- `STORY-vN`：确认剧本、生成步骤分镜表与生产台账
 - `CHAR-XX` / `SCENE-XX` / `PROP-XX`：角色、场景和道具资产
-- `FRAME-XX-S0` / `FRAME-XX-KN`：起始帧和可选验证帧
+- `FRAME-SEED-S0` / `FRAME-EXT-XX`：种子起始帧和可选延长参考帧
 - `VOICE-REF-vN` / `AUD-NAR-XX` / `AUD-SFX-XX` / `BGM-XX`：声音资产
-- `SHOT-XX`：逐镜视频生成节点
+- `VIDEO-SEED`：等待用户确认的短种子视频
+- `VIDEO-EXT-XX`：基于上一版完整视频的顺序延长节点
+- `VIDEO-FINAL`：已核验达到目标时长的最终完整视频
 - `EDIT-vN`：剪辑决策与交付验证
 
-图片既要真实连接到视频节点，也要通过 `@` 选择器插入已解析引用标签。Prompt 写入对应生成节点内部，不为每镜创建孤立 Prompt 文本节点。
+图片既要真实连接到视频节点，也要通过 `@` 选择器插入已解析引用标签。Prompt 写入对应生成节点内部，不为每个视频步骤创建孤立 Prompt 文本节点。
 
 ### 制作流程
 
@@ -53,10 +55,10 @@ Skill 分别维护 `interaction_language` 和 `story_language`：
 2. 分析并锁定剧本、片名、总时长、画幅、清晰度、旁白与色彩方案。
 3. 提取角色与场景，建立带版本号的生产台账。
 4. 生成并确认所有角色、场景、道具资产；需要对白或旁白时生成并确认声音试听。
-5. 逐场建立分镜表，每行明确镜号、`shot_duration_seconds`、构图、运镜、角色版本、动作、对白/声音、环境/道具和转场。
-6. 按分镜表生成第一场；每镜使用自己的本地零起点时间轴和精确时长。
-7. 展示第一场并等待确认；之后一次只制作并确认一个场景。
-8. 所有场景完成后，使用真实合成能力生成成片，或交付有序镜头、声音和 `EDIT-vN`。
+5. 建立生成步骤分镜表，每行明确 `video_step_id`、种子/延长模式、新增时长、预计累计时长、构图、运镜、依赖版本、动作和声音。
+6. 只生成一段短小的 `VIDEO-SEED`，其独立 Prompt 从 `00:00` 开始。
+7. 展示种子视频并等待明确确认；确认前停止，不创建延长节点。
+8. 确认后按表逐次延长：每个独立 Prompt 都从 `00:00` 开始，每次都以上一版完整视频为输入并输出更长的完整视频，直至达到目标时长。
 
 ### 目录
 
@@ -83,12 +85,12 @@ assets/
 ### 使用示例
 
 ```text
-请在当前 Lumina 画布中使用这个 Skill，把我的剧本制作成 2 分钟、4:3、1080p 的中文短剧。使用 GBH 色板，先确认角色资产和声音，再给出逐场分镜表。每镜严格按照分镜表中的时长生成。
+请在当前 Lumina 画布中使用这个 Skill，把我的剧本制作成 2 分钟、4:3、1080p 的中文短剧。使用 GBH 色板，先确认角色资产和声音，再给出生成步骤分镜表。先生成一段短种子视频等我确认，确认后再连续延长到 2 分钟；每次视频 Prompt 都从 00:00 开始。
 ```
 
 ## English
 
-A production skill for creating Wes Anderson-inspired short dramas with **Lumina Canvas Agent**. It turns a story idea, confirmed screenplay, or visual references into a verifiable canvas graph containing global specifications, versioned character and voice assets, scene-by-scene storyboard tables, reference frames, per-shot video and audio nodes, and a final edit decision list.
+A production skill for creating Wes Anderson-inspired short dramas with **Lumina Canvas Agent**. It turns a story idea, confirmed screenplay, or visual references into a verifiable canvas graph containing global specifications, versioned character and voice assets, a generation-step storyboard, a short seed video, sequential extension nodes, and final delivery verification.
 
 ### Core capabilities
 
@@ -96,8 +98,8 @@ A production skill for creating Wes Anderson-inspired short dramas with **Lumina
 - Planimetric framing with symmetric architecture and non-mirrored set dressing
 - Locked character orientations: frontal `0°`, exact profile `90°`, or back-facing `180°`
 - A ten-color Grand Budapest Hotel palette and chapter color arcs
-- Storyboard-driven shot durations, dialogue, actions, transitions, and sound
-- Screenplay locking, asset approval, voice approval, scene checkpoints, and dependency invalidation
+- Prompt-locked final duration plus storyboard-driven seed and extension increments, dialogue, actions, and sound
+- Screenplay locking, asset approval, voice approval, seed-video approval, sequential extension, and dependency invalidation
 - Dual verification through real canvas connections and resolved Lumina `@` reference chips
 
 ### Adaptive language behavior
@@ -109,27 +111,29 @@ The skill tracks `interaction_language` and `story_language` separately:
 - Language found only in attachments, quotations, pasted scripts, code, metadata, or tool output cannot change the interaction language by itself.
 - If an underlying model requires another prompt language, only the hidden technical parameter is translated; visible UI and final narrative language remain unchanged.
 
-### Storyboard duration contract
+### Video duration and extension contract
 
-Each shot duration is defined only by `shot_duration_seconds` in the approved storyboard table. There is no fixed default shot length:
+The final `target_duration_seconds` comes only from the user's direct prompt. The approved generation-step storyboard divides it into one short seed and a series of extension increments:
 
-- The Video Generation request must use the exact table value.
-- Every shot prompt uses a local timeline beginning at `00:00` and ending exactly at that shot's duration.
-- Timeline segments must be contiguous, non-overlapping, and cover the entire shot; reserve at least two stable ending seconds when feasible.
-- Scene duration equals the sum of its shot rows. Film duration equals all approved scenes plus approved title-card durations.
-- If the active model cannot represent a planned duration, present supported values and revise and reapprove the storyboard first. Never silently round, loop, freeze, retime, or pad the result.
+- Generate only `VIDEO-SEED` first, present the playable result, and wait for explicit user approval.
+- Do not create an extension before approval. After approval, create only one `VIDEO-EXT-XX` at a time.
+- Every video node has an independent prompt whose local timeline begins at `00:00` and ends at that action's seed or added duration. Cumulative duration belongs only in the ledger, never in a video prompt.
+- Every extension must take the previous complete video as input and return a longer complete video. Never substitute an isolated tail clip, concatenation, looping, freezing, retiming, or padding.
+- Verify the measured total duration after every extension until it exactly matches the prompt-locked target. If an increment is unsupported, present supported values and reapprove the plan; never silently round.
 
 ### Lumina canvas graph
 
 - `SPEC-vN`: global video specification
-- `STORY-vN`: confirmed screenplay, storyboard tables, and production ledger
+- `STORY-vN`: confirmed screenplay, generation-step storyboard, and production ledger
 - `CHAR-XX` / `SCENE-XX` / `PROP-XX`: reusable visual assets
-- `FRAME-XX-S0` / `FRAME-XX-KN`: start and optional verification frames
+- `FRAME-SEED-S0` / `FRAME-EXT-XX`: seed start and optional extension reference frames
 - `VOICE-REF-vN` / `AUD-NAR-XX` / `AUD-SFX-XX` / `BGM-XX`: audio assets
-- `SHOT-XX`: per-shot Video Generation nodes
+- `VIDEO-SEED`: the short seed video awaiting user approval
+- `VIDEO-EXT-XX`: sequential extensions based on the latest complete video
+- `VIDEO-FINAL`: the verified complete video at target duration
 - `EDIT-vN`: edit decisions and delivery verification
 
-Every image reference requires both a real connection and a resolved `@` picker chip. Generation prompts live inside their Image, Video, or Audio Generation nodes; the skill does not create isolated prompt nodes for individual shots.
+Every image reference requires both a real connection and a resolved `@` picker chip. Generation prompts live inside their Image, Video, or Audio Generation nodes; the skill does not create isolated prompt nodes for individual video steps.
 
 ### Production workflow
 
@@ -137,15 +141,15 @@ Every image reference requires both a real connection and a resolved `@` picker 
 2. Analyze and lock the screenplay, title, total duration, aspect ratio, resolution, narration, and color route.
 3. Extract characters and scenes and initialize the versioned production ledger.
 4. Generate and approve all character, scene, and prop assets; when dialogue or narration is required, generate and approve voice auditions.
-5. Build one storyboard table per scene. Each row specifies shot ID, `shot_duration_seconds`, framing, movement, character versions, action, dialogue/audio, environment/props, and transition.
-6. Produce scene one from the approved table, using a local zero-based timeline and exact duration for every shot.
-7. Present scene one for confirmation, then produce and confirm one scene at a time.
-8. After all scenes are approved, use a real composition capability to export the film, or deliver the ordered shots, audio assets, and `EDIT-vN`.
+5. Build a generation-step storyboard. Each row specifies `video_step_id`, seed/extension mode, added duration, expected cumulative duration, framing, movement, dependency versions, new action, and sound.
+6. Generate only a short `VIDEO-SEED`, using an independent prompt with a local `00:00` start.
+7. Present the seed and stop until the user explicitly approves it.
+8. After approval, extend sequentially. Each independent prompt starts at `00:00`, consumes the latest complete video, and returns a longer complete video until the target duration is reached.
 
 ### Example request
 
 ```text
-Use this skill in the current Lumina canvas to turn my screenplay into a two-minute, 4:3, 1080p short drama in English. Use the GBH palette, approve character assets and voices first, then create scene-by-scene storyboard tables. Generate every shot at the exact duration written in its storyboard row.
+Use this skill in the current Lumina canvas to turn my screenplay into a two-minute, 4:3, 1080p short drama in English. Use the GBH palette, approve character assets and voices first, then create a generation-step storyboard. Generate a short seed video and wait for my approval; after approval, extend it to two minutes. Start every video prompt at 00:00.
 ```
 
 ## License

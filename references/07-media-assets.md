@@ -17,9 +17,11 @@
 | `CHAR-XX` | Image Generation / 已有图片 | 角色全身元素图 |
 | `SCENE-XX` | Image Generation / 已有图片 | 平面化场景全景 |
 | `PROP-XX` | Image Generation / 已有图片 | 关键道具与 T-10 文字道具 |
-| `FRAME-XX-S0` | Image Generation | `SHOT-XX` 的 0 秒构图锚点 |
-| `FRAME-XX-KN` | Image Generation | 可选中段或收束验证帧 |
-| `SHOT-XX` | Video Generation | 一个已批准的叙事镜头 |
+| `FRAME-SEED-S0` | Image Generation | `VIDEO-SEED` 的 0 秒构图锚点 |
+| `FRAME-EXT-XX` | Image Generation | 可选延长段参考帧，不替代上一版完整视频 |
+| `VIDEO-SEED` | Video Generation | 等待用户确认的短种子视频 |
+| `VIDEO-EXT-XX` | Video Extension | 输入上一版完整视频并返回更长完整视频 |
+| `VIDEO-FINAL` | Video / Alias | 已核验达到目标时长的最终完整视频 |
 | `VOICE-REF-vN` | Audio Generation | 可选已批准音色试听 |
 | `AUD-NAR-XX` | Audio Generation | 对应镜头旁白 |
 | `AUD-SFX-XX` | Audio Generation | 对应镜头音效/环境声 |
@@ -30,31 +32,34 @@
 ## 三、元素资产与关键帧
 
 - **元素图**：使用 Lumina 内置 Image Generation 节点或已上传图片，目标 2K（若可用）。角色为全身正面电影静帧，禁止 `turnaround`、`character sheet`、`T-pose` 和 `reference sheet`；场景为平面化全景；关键道具为严格俯拍或正面平拍。角色、场景和道具共享已批准的比例、色彩与年代锚点。
-- **融合关键帧**：每个 `SHOT-XX` 必须有一张 `FRAME-XX-S0`，锁定正交二维构图、角色三态朝向、场景中轴和道具起始位置。只有需要验证中段轴线行动或收束状态时才创建 `FRAME-XX-KN`。
-- **章节标题卡**：创建静态 Image Generation 节点，目标 2K；只作为 3–4 秒静帧，不创建独立叙事 `SHOT-XX`。
+- **融合关键帧**：`VIDEO-SEED` 必须有一张 `FRAME-SEED-S0`，锁定正交二维构图、角色三态朝向、场景中轴和道具起始位置。只有延长步骤确需约束新增状态时才创建 `FRAME-EXT-XX`；它只能作为辅助参考，不能取代上一版完整视频输入。
+- **章节标题卡**：需要时把标题卡作为种子或某次延长中的叙事节拍，不创建可供后期拼接的独立视频片段。
 - **派生适配图**：若源图比例不兼容输出画幅，保留原图并创建 `[原名]-FIT`。优先裁掉无关背景，否则扩展短边；不得拉伸、重塑或重新生成角色身份、服装、关键道具、文字或连续性细节。记录原始与派生尺寸和处理方式。
 
 元素资产生成完成后，逐项检查角色身份、服装色、标志道具、物理材质、年代、画幅、角色朝向和背景色差。展示资产组并获得批准，之后才创建视频节点。
 
-## 四、最终视频节点
+## 四、种子视频与连续延长节点
 
-1. 为每个已批准镜头创建一个 `SHOT-XX | [镜头名] | Image-to-Video` Lumina Video Generation 节点。不要把多个计划镜头合并进一个节点。
-2. 使用支持图像（与可选视频）参考的多模态模型；存在时默认 `Seedance 2.5`，否则把等效模型写入并批准在 `SPEC-vN` 中。画幅、清晰度和时长必须与规格一致。
-3. 把本镜涉及的 `CHAR`、`SCENE`、`PROP`、`FRAME-XX-S0` 和可选 `FRAME-XX-KN` 输出真实连接到视频节点；再通过 `@` 选择器把同一组资产插入内部 Prompt。删除与本镜无关的参考。
-4. 上一镜视频只在动作、空间或画面状态必须无缝承接时才作为参考，不作为默认输入。
-5. `FRAME-XX-S0` 是构图参考，不擅自改为平台特有的首帧驱动模式。每镜时长严格使用已批准分镜表的 `shot_duration_seconds`，并在提交前确认当前模型能够精确表示该时长。
-6. Prompt 连同结构化引用标签不超过 4,500 字符，或当前节点显示的更小限制。
-7. 每镜提交前展示 Prompt 并等待确认。按 `references/09-video-production-workflow.md` 一次只生产一个场景：完成并展示当前场景的实际镜头与依赖版本，用户确认后才进入下一场。
+1. 先创建且只创建一个 `VIDEO-SEED | Short Preview` Video Generation 节点。使用已批准资产和 `FRAME-SEED-S0`，按生成步骤表的种子新增时长生成一段短小、可独立评审的开场视频。
+2. 展示 `VIDEO-SEED` 的可播放结果并停止。只有用户明确选择“确认，继续延长”后，才可创建第一个 `VIDEO-EXT-XX`；修改意见必须先回到种子节点重新生成和再次确认。
+3. 每个 `VIDEO-EXT-XX` 都是独立节点和独立 Prompt，但必须把上一节点输出的完整视频作为主要输入，并使用 Lumina 的真实 Video Extension 能力返回更长的完整视频。不得只返回尾段。
+4. 种子和每次延长的 Prompt 都从本地 `00:00` 开始，结束时间只等于该次 `added_duration_seconds`。累计时长只写入 `STORY-vN` 台账，禁止写进 Prompt。
+5. 每个延长节点只描述本次新增故事节拍；继承输入视频末帧的身份、服装、道具、构图轴线、运动方向、光线、颗粒和声音状态。可连接本次需要的 `CHAR`、`SCENE`、`PROP` 和 `FRAME-EXT-XX`，但不得用它们替代完整视频输入。
+6. 使用支持图像参考与完整视频延长的模型；存在时默认 `Seedance 2.5`，否则把已验证等效模型写入 `SPEC-vN`。若没有真实延长能力，在种子确认后停止并报告限制，禁止退化为片段生成与拼接。
+7. 每次生成后验证：输出可播放；实测总时长大于输入且等于预计累计时长；输入视频内容完整保留；新内容没有从头开演。验证通过后，该输出才可作为下一次延长的输入。
+8. Prompt 连同结构化引用标签不超过 4,500 字符，或当前节点显示的更小限制。达到用户提示词中的 `target_duration_seconds` 后，把最后一个已验证输出标记为 `VIDEO-FINAL`。
 
 提交前检查：
 
 ```text
-镜号与节点名一致
-模型 / 比例 / 清晰度 / 时长与 SPEC-vN 一致
+video_step_id 与节点名一致
+模型 / 比例 / 清晰度 / 新增时长与 SPEC-vN 及生成步骤表一致
 Prompt 位于 Video Generation 节点内部
 每个图片引用都有真实连接与已解析 @ 标签
-角色朝向、场景中轴、道具位置与 FRAME-XX-S0 一致
-本地时间轴从 0s 精确覆盖到 shot_duration_seconds，各段连续无重叠，末尾尽可能至少 2s 稳定画面
+延长节点真实连接上一版完整视频并使用真实 Video Extension 动作
+角色朝向、场景中轴、道具位置与种子/延长参考一致
+本地时间轴从 00:00 精确覆盖到 added_duration_seconds，各段连续无重叠
+Prompt 不含全片累计时码；实测累计时长只记入台账
 无无关参考、重复音频或未批准输入
 ```
 
@@ -62,8 +67,8 @@ Prompt 位于 Video Generation 节点内部
 
 ## 五、资产绑定合约
 
-- 在生成前确认对应 `key_element`、`shot` 或 `audio_layer` 已存在于批准的 `STORY-vN` 中。
-- `CHAR` / `SCENE` / `PROP` 绑定到实际 `key_element`；`FRAME-XX-S0`、`FRAME-XX-KN` 与 `SHOT-XX` 绑定到实际 `shot`；旁白、音效和 BGM 绑定到实际 `audio_layer`。
+- 在生成前确认对应 `key_element`、`video_step` 或 `audio_layer` 已存在于批准的 `STORY-vN` 中。
+- `CHAR` / `SCENE` / `PROP` 绑定到实际 `key_element`；`FRAME-SEED-S0`、`FRAME-EXT-XX`、`VIDEO-SEED` 与 `VIDEO-EXT-XX` 绑定到实际 `video_step`；旁白、音效和 BGM 绑定到实际 `audio_layer`。
 - 一个资产承担多个实际用途时保留所有适用连接与记录，但不得把与某镜无关的资产连接到该镜。
 - 所有 ID 以当前画布和 Storyboard 的真实值为准。不要仅凭名称相似猜测角色或镜头。
 - 每次创建、重命名、重连或重生成后更新绑定表，并重新检查画布；生成任务进入队列不等于资产完成，必须确认图片可见、视频可播放或音频可试听。
@@ -96,8 +101,9 @@ Prompt 位于 Video Generation 节点内部
 
 ## 七、交付前媒体检查
 
-- 每个计划镜头对应且只对应一个可播放的 `SHOT-XX`。
-- 每个 `SHOT-XX` 使用正确的元素图片、`FRAME-XX-S0`、可选验证帧、真实连接和已解析引用标签。
-- 所有节点使用 `SPEC-vN` 批准的模型、比例、清晰度、语言和时长。
+- `VIDEO-SEED` 已先单独生成、展示并获得用户明确批准，批准前不存在延长节点。
+- 每个 `VIDEO-EXT-XX` 都有且只有一个上一版完整视频输入，并返回经过验证的更长完整视频。
+- 每个视频 Prompt 独立从 `00:00` 开始，结束时间等于本次 `added_duration_seconds`，不含累计时码。
+- 最后一个输出使用 `SPEC-vN` 批准的模型、比例、清晰度和语言，实测时长准确等于 `target_duration_seconds`。
 - 启用旁白时，每镜只使用匹配的 `AUD-NAR-XX`；关闭旁白时不存在音色试听、旁白生成或旁白连接。
-- 失败、不可用资产或未解决问题必须在 `EDIT-vN` 中明确标记，不得称为完成。
+- 不存在独立尾段、视频片段拼接、循环、冻结、变速或填充；失败、不可用资产或未解决问题必须在 `EDIT-vN` 中明确标记，不得称为完成。

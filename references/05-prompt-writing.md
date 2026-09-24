@@ -141,38 +141,56 @@ GBH 色板（十色体系、色彩插槽、色彩弧线）见 `references/06-gbh
 
 ---
 
-## 四、视频提示词结构（视频生成模型）
+## 四、视频提示词结构（种子与延长）
 
-在 Lumina 中，把完整提示词直接写入对应 `SHOT-XX` Video Generation 节点的内部 Prompt 字段。先把相关图片输出真实连接到该视频节点，再用 `@` 选择器插入已解析的结构化引用标签。以下 `@CHAR-XX` 等仅表示标签位置；禁止把手写文本当作真实引用。
+在 Lumina 中，把完整提示词直接写入 `VIDEO-SEED` 或对应 `VIDEO-EXT-XX` 节点。每个节点的 Prompt 都是独立指令，时间轴一律从本节点的本地 `00:00` 开始；禁止沿用全片累计时码。以下 `@CHAR-XX` 等仅表示标签位置；图片必须同时真实连接并通过 `@` 选择器插入已解析标签。
+
+### A. `VIDEO-SEED` 独立提示词
 
 ```
 @CHAR-XX [已解析角色元素图：身份/人脸]
 @SCENE-XX [已解析场景元素图：布景/色彩]
-@PROP-XX [仅在该镜实际使用关键道具时插入]
-@FRAME-XX-S0 [已解析 0 秒正交构图、人物朝向与物体位置锚点]
-@FRAME-XX-KN [只在需要验证中段/收束状态时插入]
+@PROP-XX [仅在种子段实际使用关键道具时插入]
+@FRAME-SEED-S0 [已解析 0 秒正交构图、人物朝向与物体位置锚点]
 
 [平面构图锁定语（见下，头部前置锚定）]
 [场景类型A–G] Wes Anderson film still,
 [GBH色彩总括行 或 自定义色彩规格]
 [布景三层：材质层+内容层+年代层]
 [角色描述：服装+站位+道具+角色朝向锁定语]
-[分镜表时长 D 秒的本地时间轴：0秒起始静帧 → 单一X/Y/中央Z轴运动或一次[CUT →] → 尽可能至少2秒收束静帧；仅使用M-00/M-Z+/M-Z-/M-XL/M-YU/M-YD或M-00内对象P-X/P-Y/P-Z]
+[种子新增时长 D 秒的本地时间轴：00:00 起始静帧 → 单一X/Y/中央Z轴运动或一次[CUT →] → 尽可能至少2秒收束静帧；仅使用M-00/M-Z+/M-Z-/M-XL/M-YU/M-YD或M-00内对象P-X/P-Y/P-Z]
 [NEGATIVE PROMPT（见下）]
 [质量后缀（见下）]
 ```
 
-**分镜表时长提示词执行规则**：`D = shot_duration_seconds`，`start_frame` 是镜头本地 0 秒的构图锚点；每段以准确秒数连续、无重叠地覆盖完整 `[0–Ds]`。禁止使用全片累计时间。视频节点请求时长必须等于 D；精确时长不受模型支持时先修改并重新确认分镜表。单段只允许摄影机或对象之一作为主导运动者：摄影机运动时对象保持可读的稳定关系；M-00 时才可写对象单轴运动。镜内硬切写作 `[CUT →]`，两端必须都是稳定正交画面；不用旋转、摇镜或倾斜制造转换。
+### B. `VIDEO-EXT-XX` 独立提示词
 
-**Lumina 提交前检查**：节点名与 `shot` ID 一致；Prompt 在视频节点内部；每个引用都有真实连线和已解析 `@` 标签；模型、画幅、清晰度和时长与 `SPEC-vN` 一致；引用总数只覆盖本镜需要的资产；含引用标签的完整 Prompt 不超过当前节点限制（未显示更小限制时以 4,500 字符为上限）。
+```text
+@PREVIOUS-COMPLETE-VIDEO [上一节点输出的完整视频；必须真实连接]
+@CHAR-XX / @SCENE-XX / @PROP-XX [仅本次新增叙事真正需要时插入]
+@FRAME-EXT-XX [可选新增段参考帧]
+
+Extend the connected complete video by D seconds and return the longer complete video.
+Preserve the exact final frame state, character identity, wardrobe, props, palette, geometry, camera axis, motion direction, lighting, grain, and audio continuity from the input video.
+[只描述本次新增叙事，不复述已完成内容]
+[本次新增 D 秒的独立本地时间轴：00:00–00:XX；不得写累计时码]
+[平面构图、运镜、角色朝向和声音约束]
+Do not restart the story, do not generate an isolated tail clip, and do not replace or shorten the connected input video.
+[NEGATIVE PROMPT]
+[质量后缀]
+```
+
+**独立提示词时长规则**：`D = added_duration_seconds`。每段以准确秒数连续、无重叠地覆盖完整 `[00:00–D]`；`expected_cumulative_duration_seconds` 只记在台账中，绝不写入 Prompt。例如上一版完整视频已到 20 秒、本次新增 8 秒，正确写法仍是 `00:00–00:08`，错误写法是 `00:20–00:28`。视频节点请求时长必须等于 D；模型不支持时先修改并重新确认生成步骤表。单段只允许摄影机或对象之一作为主导运动者；镜内硬切写作 `[CUT →]`，两端必须都是稳定正交画面。
+
+**Lumina 提交前检查**：节点名与 `video_step_id` 一致；Prompt 在视频节点内部；每个引用都有真实连线和已解析 `@` 标签；模型、画幅、清晰度和新增时长与 `SPEC-vN` 及生成步骤表一致；延长节点真实连接上一版完整视频；引用总数只覆盖本次需要的资产；含引用标签的完整 Prompt 不超过当前节点限制（未显示更小限制时以 4,500 字符为上限）。
 
 ### 角色朝向锁定语（每个出现人物的表演段必写）
 
 - 在角色描述后，按该人物当前表演状态原样写入其一：`facing camera directly, face and torso frontal, 0-degree orientation`、`strict 90-degree profile facing [left/right], face and torso in exact side view`、`back facing camera, 180-degree orientation, face fully hidden`。
 - 同一段内角色保持所选朝向；若分段改变朝向，时间轴须写明完成的 90° 或 180° 转身，新的表演段立即改用对应锁定语。
-- 每镜负向提示词追加：`no three-quarter face, no three-quarter body pose, no oblique eyeline, no over-the-shoulder shot, no diagonal stance, no sustained in-between turning pose`。
+- 每个视频步骤的负向提示词追加：`no three-quarter face, no three-quarter body pose, no oblique eyeline, no over-the-shoulder shot, no diagonal stance, no sustained in-between turning pose`。
 
-### 平面构图锁定语（五选一，每镜头部前置）
+### 平面构图锁定语（五选一，每个视频 Prompt 头部前置）
 
 ```
 // 标准平面（A–F 类、T-10）

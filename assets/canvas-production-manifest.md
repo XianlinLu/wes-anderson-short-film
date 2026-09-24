@@ -5,44 +5,48 @@
 ```text
 SPEC 版本：[SPEC-vN] · 状态：[draft / approved]
 STORY 版本：[STORY-vN] · 状态：[draft / approved]
-总镜数：[N]
-输出：[比例] / [清晰度] / [总时长] / [语言]
+target_duration_seconds：[用户直接提示词中的秒数]
+输出：[比例] / [清晰度] / [语言]
 interaction_language：[语言]
 story_language：[语言]
-合成能力：[可用 / 不可用 / 待确认]
-生产路径：[逐镜节点与真实合成 / 连续完整视频扩展]
+真实 Video Extension 能力：[可用 / 不可用 / 待确认]
+生产路径：短种子确认 → 顺序延长完整视频 → 目标时长核验
 
 资产清单：
 节点名/ID | 类型 | 内容 | 尺寸/比例 | 版本 | 批准状态
 
-镜头绑定：
-Scene | Shot | shot_duration_seconds | actual_duration_seconds | Video 节点 | CHAR | SCENE | PROP | FRAME-S0 | FRAME-KN | 真实连接 | @ 引用 | 生成 | 批准
+视频延长血缘：
+video_step_id | mode(seed/extension) | added_duration_seconds | expected_cumulative_duration_seconds | actual_cumulative_duration_seconds | previous_complete_video | output_complete_video | CHAR | SCENE | PROP | FRAME | 真实连接 | @ 引用 | 生成 | 用户批准/验证
 
 声音绑定：
 Layer | 节点名/ID | 类型 | 时长 | 目标镜头/时间线 | 实际连接 | 批准
 
-剪辑时间线：
-轨道1 视频：[按顺序列出 SHOT-XX 与入出点]
-轨道2 旁白：[列出 AUD-NAR-XX、入点、出点、电平]
-轨道3 音效：[列出 AUD-SFX-XX、入点、出点、电平]
-轨道4 BGM：[列出 BGM-XX、入点、出点、电平]
+单一完整视频与声音：
+视频：[VIDEO-FINAL 节点名/ID；唯一完整视频]
+旁白：[列出 AUD-NAR-XX、入点、出点、电平]
+音效：[列出 AUD-SFX-XX、入点、出点、电平]
+BGM：[列出 BGM-XX、入点、出点、电平]
 
 转场与标题卡：
 [切点 / 类型 / 时长 / 亮度匹配 / 状态]
 
 验证：
 [ ] 规格与分镜版本已批准
-[ ] N 个计划镜头对应 N 个可播放视频节点
-[ ] 每镜请求/实测时长与 shot_duration_seconds 一致
-[ ] 每场与全片的计划/实测时长求和一致
-[ ] 每镜图片真实连接与已解析 @ 引用一致
+[ ] VIDEO-SEED 已先单独生成、展示并获得用户明确批准
+[ ] 用户批准前没有创建 VIDEO-EXT 节点
+[ ] 每个 VIDEO-EXT 的唯一视频输入是上一版完整视频，输出是更长完整视频
+[ ] 每个视频 Prompt 独立从 00:00 开始，结束时间等于 added_duration_seconds
+[ ] 累计时长只存在于台账，不出现在视频 Prompt
+[ ] 最终实测时长准确等于 target_duration_seconds
+[ ] 每步图片真实连接与已解析 @ 引用一致
 [ ] 角色、服装、道具、色温与轴线连续
 [ ] 音频实际时长与连接已核验
-[ ] 时间线或 EDL 完整
+[ ] 不存在独立尾段拼接、循环、冻结、变速或填充
+[ ] 单一完整视频与 EDL 记录完整
 [ ] 导出文件真实存在并可播放（无导出能力时标记 N/A）
 
 失败与未决项：
 [节点 / 错误 / 已尝试修正 / 下一步]
 
-最终状态：[镜头完成 / 等待复核 / 已合成 / 已导出 / 受限交付]
+最终状态：[种子待确认 / 延长中 / 目标时长已验证 / 已导出 / 受限交付]
 ```

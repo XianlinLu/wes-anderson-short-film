@@ -4,7 +4,7 @@
 
 ```
 片名：[用户输入]
-总时长：[1 / 2 / 3 分钟]
+target_duration_seconds：[只取自用户直接提示词；缺失时先询问]
 interaction_language：[从用户最新直接指令确定]
 story_language：[明确指定 / 现有剧本语言 / interaction_language]
 输出比例：[16:9 / 4:3 / 9:16]
@@ -16,20 +16,22 @@ story_language：[明确指定 / 现有剧本语言 / interaction_language]
 声音生成节点/模型：[当前 Lumina 实际可用选择]
 短片语言：[中 / 英 / 其他]；旁白、对白与标题卡均遵循此语言
 旁白：[是 / 否]
-总镜数：[按目标时长规划]
-逐镜时长来源：已确认分镜表的 shot_duration_seconds；无固定默认镜长
-时长校验：每场镜头时长之和 / 标题卡时长 / 全片计划时长 / 实测时长
+种子新增时长：[added_duration_seconds]
+延长步数：[按模型实际支持的增量规划]
+时长来源：种子与每次延长的 added_duration_seconds 之和必须等于 target_duration_seconds
+时长校验：每步预计累计时长 / 每步实测累计时长 / 最终目标时长
 叙事梗概（逐镜）：
   镜1：[一句话]
   镜2：[一句话]
 叙事模式：[线性 / 嵌套章节 / 时间跳变]
 连贯锁（全片不变）：角色身份 / 服装主色与标志道具 / 色温
-Lumina 节点前缀：SPEC / STORY / CHAR / SCENE / PROP / FRAME / SHOT / VOICE-REF / AUD-NAR / AUD-SFX / BGM / EDIT
+Lumina 节点前缀：SPEC / STORY / CHAR / SCENE / PROP / FRAME-SEED / FRAME-EXT / VIDEO-SEED / VIDEO-EXT / VIDEO-FINAL / VOICE-REF / AUD-NAR / AUD-SFX / BGM / EDIT
 引用合约：图片到视频节点必须同时具备真实连接与 @ 选择器生成的已解析标签
-生产路径：[A·逐镜节点与真实合成 / B·连续完整视频扩展]
-生成顺序：规格确认 → 剧本锁定 → 角色资产确认 → 可选声音确认 → 第一场分镜确认与生成 → 第一场确认 → 逐场生成确认 → 合成/交付
-合成能力：[可用 / 不可用 / 待确认]
-不可用时的交付：有序镜头 + 独立声音节点 + EDIT-vN 剪辑决策表；不得声称已导出成片
+生产路径：短种子视频确认 → 基于上一版完整视频顺序延长 → 达到目标时长
+提示词时钟：每个 VIDEO-SEED / VIDEO-EXT 节点都是独立 Prompt，时间轴从本地 00:00 开始；累计时码禁止进入 Prompt
+生成顺序：规格确认 → 剧本锁定 → 角色资产确认 → 可选声音确认 → 生成步骤表确认 → VIDEO-SEED 生成 → 用户明确确认 → VIDEO-EXT-01…N 顺序延长 → VIDEO-FINAL 核验/交付
+真实 Video Extension 能力：[可用 / 不可用 / 待确认]
+不可用时的交付：已确认 VIDEO-SEED + 独立声音/资产节点 + EDIT-vN 限制说明；不得使用片段拼接冒充延长
 版本：[v1]
 批准状态：[draft / approved]
 ```
