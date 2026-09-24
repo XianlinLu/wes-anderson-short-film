@@ -62,7 +62,7 @@ Skill 分别维护 `interaction_language` 和 `story_language`：
 
 ```text
 SKILL.md
-LICENSE
+license.txt
 references/
   01-workflow.md
   02-source-analysis.md
